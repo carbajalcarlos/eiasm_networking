@@ -55,11 +55,11 @@ for (i in 1:nrow(authors)) {
   scopus.data[[i]] <- temp
 }
 
-# ===== Storing information extracted =====
+# ===== Creation of workable dataframes =====
 # Binding authors data dataframe
 scopus.data.flat <- bind_rows(scopus.data)
 # Adding orginal data
-temp <- subset(x = authors, select = c("local.id", "full.name", "name.clean", "surname.clean"))
+temp <- subset(x = authors, select = c("local.id", "full.name"))
 scopus.data.flat <- merge(x = scopus.data.flat, y = temp, by = "local.id")
 
 # Storing data froma authors not found.
