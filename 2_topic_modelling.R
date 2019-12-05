@@ -6,7 +6,7 @@ require(dplyr)
 require(ggplot2)
 
 require(tidyr)
-require(topicmodels)
+#require(topicmodels)
 
 
 
@@ -57,3 +57,75 @@ abs.tf_idf.track %>%
   facet_wrap(~document, ncol = 4, scales = "free") +
   coord_flip()
 
+abs.sentiments <- abs.td.track %>%
+  inner_join(get_sentiments("bing"), by = c(term = "word"))
+
+
+# Sentriment analysis
+abs.sentiments <- abs.sentiments %>%
+  arrange(document, desc(sentiment), desc(count))
+
+abs.sentiments$document <- as.factor(abs.sentiments$document)
+
+library(ggplot2)
+abs.sen.1 <- subset(abs.sentiments, subset = document == "01. Creativity in New Product Development")
+
+abs.sen.1 %>%
+  count(sentiment, term, wt = count) %>%
+  ungroup() %>%
+  filter(n >= 3) %>%
+  mutate(n = ifelse(sentiment == "negative", -n, n)) %>%
+  mutate(term = reorder(term, n)) %>%
+  ggplot(aes(term, n, fill = sentiment)) +
+  geom_bar(stat = "identity") +
+  ylab("Contribution to sentiment") +
+  coord_flip()
+
+abs.sen.2 <- subset(abs.sentiments, subset = document == "02. Design Issues and Innovation by Design")
+
+abs.sen.2 %>%
+  count(sentiment, term, wt = count) %>%
+  ungroup() %>%
+  filter(n >= 5) %>%
+  mutate(n = ifelse(sentiment == "negative", -n, n)) %>%
+  mutate(term = reorder(term, n)) %>%
+  ggplot(aes(term, n, fill = sentiment)) +
+  geom_bar(stat = "identity") +
+  ylab("Contribution to sentiment") +
+  coord_flip()
+
+# ===== LDA model =====
+# Casting tidy file into a matrix
+abs.dtm.track <- abs.td.track %>%
+  cast_dtm(document, term, count)
+
+abs.dfm.track <- abs.td.track %>%
+  cast_dfm(document, term, count)
+
+# Creation of LDA model searching for two topics (k=5)
+abs.track.lda <- LDA(abstracts.dfm.track, k = 5, control = list(seed = 359))
+abs.track.lda
+
+# Interpretation of the model
+require(tidytext)
+abs.track.lda.topics <- tidy(abs.track.lda, matrix = "beta")
+abs.track.lda.topics
+
+# Plotting resutls
+require(ggplot2)
+require(dplyr)
+
+ap_top_terms <- ap_topics %>%
+  group_by(topic) %>%
+  top_n(10, beta) %>%
+  ungroup() %>%
+  arrange(topic, -beta)
+
+
+ap_top_terms %>%
+  mutate(term = reorder_within(term, beta, topic)) %>%
+  ggplot(aes(term, beta, fill = factor(topic))) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~ topic, scales = "free") +
+  coord_flip() +
+  scale_x_reordered()
